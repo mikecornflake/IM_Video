@@ -189,9 +189,11 @@ Begin
     fmeVideoPlayer.Clear;
   End;
 
-  If Length(AFiles) = 1 Then
+  arrFiles := AFiles;
+
+  If Length(arrFiles) = 1 Then
   Begin
-    sFile := AFiles[0];
+    sFile := arrFiles[0];
 
     If TryParseInspectionFilename(sFile, oInspectionFilenameInfo) And
       oInspectionFilenameInfo.FoundDateTime Then
@@ -250,6 +252,7 @@ Begin
             dtStart := 0;
 
           fmeSyncedVideo.Load(sFile, sChannel, dtStart);
+          FMRU.Add(sFile);
         End;
       End;
 

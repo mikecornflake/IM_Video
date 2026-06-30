@@ -1,38 +1,69 @@
 inherited frmSyncedVideoPlayer: TfrmSyncedVideoPlayer
-  Left = 513
-  Height = 378
-  Top = 38
-  Width = 380
+  Left = 473
+  Height = 532
+  Top = 124
+  Width = 751
   AllowDropFiles = True
   Caption = 'Multichannel Video Player'
-  ClientHeight = 378
-  ClientWidth = 380
+  ClientHeight = 532
+  ClientWidth = 751
   OnActivate = FormActivate
   OnClose = FormClose
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnDropFiles = FormDropFiles
   inherited pbMain: TProgressBar
-    Top = 332
-    Width = 380
+    Top = 486
+    Width = 751
     TabOrder = 1
   end
   inherited sbMain: TStatusBar
-    Top = 355
-    Width = 380
+    Top = 509
+    Width = 751
   end
   object pnlVideoPlayer: TPanel[2]
-    Left = 0
-    Height = 332
+    Left = 255
+    Height = 486
     Top = 0
-    Width = 380
+    Width = 496
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 0
   end
-  inherited ilImages: TImageList[3]
+  object Splitter1: TSplitter[3]
+    Left = 250
+    Height = 486
+    Top = 0
+    Width = 5
   end
-  inherited mnuMain: TMainMenu[4]
+  object lvFiles: TListView[4]
+    Left = 0
+    Height = 486
+    Top = 0
+    Width = 250
+    Align = alLeft
+    Columns = <    
+      item
+        Caption = 'Time'
+      end    
+      item
+        Caption = 'Date'
+        Width = 75
+      end    
+      item
+        Caption = 'File'
+        Width = 200
+      end>
+    HideSelection = False
+    ReadOnly = True
+    RowSelect = True
+    TabOrder = 4
+    ViewStyle = vsReport
+    OnSelectItem = lvFilesSelectItem
+  end
+  inherited ilImages: TImageList[5]
+  end
+  inherited mnuMain: TMainMenu[6]
     object mnuFile: TMenuItem[0]
       Caption = '&File'
       OnClick = mnuFileClick
@@ -43,7 +74,7 @@ inherited frmSyncedVideoPlayer: TfrmSyncedVideoPlayer
       object mnuOpenRecent: TMenuItem
         Caption = 'Open &Recent'
       end
-      object MenuItem1: TMenuItem
+      object Separator1: TMenuItem
         Caption = '-'
       end
       object mnuExit: TMenuItem
@@ -51,13 +82,21 @@ inherited frmSyncedVideoPlayer: TfrmSyncedVideoPlayer
         OnClick = mnuExitClick
       end
     end
-    inherited mnuOptions: TMenuItem[1]
+    object mnuView: TMenuItem[1]
+      Caption = 'View'
+      object mnuToggleVideo: TMenuItem
+        Caption = 'Toggle video'
+        ShortCut = 116
+        OnClick = mnuToggleVideoClick
+      end
+    end
+    inherited mnuOptions: TMenuItem[2]
       Visible = False
     end
-    inherited mnuHelp: TMenuItem[2]
+    inherited mnuHelp: TMenuItem[3]
     end
   end
-  object dlgOpen: TOpenDialog[5]
+  object dlgOpen: TOpenDialog[7]
     Filter = 'Video Files|*.mp4;*.mkv;*.wmv;*.asf;*.avi;*.mpg;*.pkt|All files|*.*'
     FilterIndex = 0
     Options = [ofAllowMultiSelect, ofFileMustExist, ofEnableSizing, ofViewDetail, ofAutoPreview]

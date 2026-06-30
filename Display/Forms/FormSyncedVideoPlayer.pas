@@ -7,37 +7,47 @@ Interface
 
 Uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
-  Buttons, Menus, FrameVideoPlayer, FrameSyncedVideo, FormMain, IniFiles, MRUs;
+  Buttons, Menus, ActnList, ComCtrls, FrameVideoPlayer, FrameSyncedVideo,
+  FormMain, IniFiles, MRUs;
 
 Type
 
   { TfrmSyncedVideoPlayer }
 
   TfrmSyncedVideoPlayer = Class(TFormMain)
-    MenuItem1: TMenuItem;
+    lvFiles: TListView;
+    mnuToggleVideo: TMenuItem;
+    mnuView: TMenuItem;
+    Separator1: TMenuItem;
     mnuOpenRecent: TMenuItem;
     mnuExit: TMenuItem;
     mnuFile: TMenuItem;
     mnuOpen: TMenuItem;
     dlgOpen: TOpenDialog;
     pnlVideoPlayer: TPanel;
+    Splitter1: TSplitter;
     Procedure FormActivate(Sender: TObject);
     Procedure FormClose(Sender: TObject; Var CloseAction: TCloseAction);
     Procedure FormCreate(Sender: TObject);
     Procedure FormDestroy(Sender: TObject);
     Procedure FormDropFiles(Sender: TObject; Const FileNames: Array Of String);
+    Procedure lvFilesSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
     Procedure mnuExitClick(Sender: TObject);
     Procedure mnuFileClick(Sender: TObject);
     Procedure mnuOpenClick(Sender: TObject);
     Procedure mnuOpenRecentClick(Sender: TObject);
+    Procedure mnuToggleVideoClick(Sender: TObject);
   Private
     fmeVideoPlayer: TFrameVideoPlayer;
     fmeSyncedVideo: TFrameSyncedVideo;
     FMRU: TMRU;
     FLoaded: Boolean;
+    FDontAsk: Boolean;
+    FSelecting: Boolean;
 
     Procedure OpenVideo(Const AFiles: TStrings); Overload;
     Procedure OpenVideo(Const AFiles: TStringArray); Overload;
+    Procedure ParseFolder(AFile: String);
   Public
     // Stored in ini file with exe - what folders to load etc
     Procedure LoadGlobalSettings(oInifile: TIniFile); Override;
@@ -93,6 +103,8 @@ Begin
   FMRU.Files := True;
 
   FLoaded := False;
+  FDontAsk := False;
+  FSelecting := False;
 End;
 
 Procedure TfrmSyncedVideoPlayer.FormActivate(Sender: TObject);
@@ -109,7 +121,12 @@ Begin
     Begin
       slFiles := TStringList.Create;
       Try
-        For i := 1 To Application.ParamCount - 1 Do
+        sbMain.SimpleText := IntToStr(Application.ParamCount);
+
+        If Application.ParamCount >= 1 Then
+          sbMain.SimpleText := Application.Params[1];
+
+        For i := 1 To Application.ParamCount Do
         Begin
           sFile := Application.Params[i];
           sExt := ExtractFileExt(LowerCase(sFile));
@@ -117,7 +134,8 @@ Begin
             slFiles.Add(sFile);
         End;
 
-        OpenVideo(slFiles);
+        If slFiles.Count > 0 Then
+          OpenVideo(slFiles);
       Finally
         slFiles.Free;
       End;
@@ -142,6 +160,64 @@ Begin
   Inherited;
 End;
 
+Procedure TfrmSyncedVideoPlayer.ParseFolder(AFile: String);
+Var
+  sFolder, sExt, sSearchMask, sFullName: String;
+  oSearchRec: TSearchRec;
+  oItem, oSelect: TListItem;
+  oFileInfo: TInspectionFilenameInfo;
+Begin
+  sFolder := ExtractFileDir(AFile);
+
+  sSearchMask := IncludeTrailingPathDelimiter(sFolder) + '*.*';
+
+  lvFiles.Items.Clear;
+  lvFiles.BeginUpdate;
+  Try
+    If FindFirst(sSearchMask, faAnyFile And Not faDirectory, oSearchRec) = 0 Then
+    Begin
+      Try
+        Repeat
+          sFullName := IncludeTrailingPathDelimiter(sFolder) + oSearchRec.Name;
+          sExt := ExtractFileExt(sFullName);
+
+          If IsVideo(sExt) Then
+          Begin
+            If TryParseInspectionFilename(sFullName, oFileInfo) Then
+            Begin
+              oItem := lvFiles.Items.Add;
+              oItem.Caption := FormatDateTime('HH:nn:ss', oFileInfo.DateTime);
+              oItem.SubItems.Add(FormatDateTime('yyyy-mm-dd', oFileInfo.DateTime));
+              oItem.SubItems.Add(oSearchRec.Name);
+            End
+            Else
+            Begin
+              oItem := lvFiles.Items.Add;
+              oItem.Caption := '';
+              oItem.SubItems.Add('');
+              oItem.SubItems.Add(oSearchRec.Name);
+            End;
+
+            If sFullName = AFile Then
+              oSelect := oItem;
+          End;
+        Until FindNext(oSearchRec) <> 0;
+      Finally
+        FindClose(oSearchRec);
+      End;
+    End;
+  Finally
+    lvFiles.EndUpdate;
+
+    If Assigned(oSelect) Then
+    Begin
+      FSelecting := True;
+      oSelect.Selected := True;
+      FSelecting := False;
+    End;
+  End;
+End;
+
 Procedure TfrmSyncedVideoPlayer.FormDropFiles(Sender: TObject; Const FileNames: Array Of String);
 Var
   sExt, sFile: String;
@@ -163,6 +239,24 @@ Begin
   Finally
     slFiles.Free;
   End;
+End;
+
+Procedure TfrmSyncedVideoPlayer.lvFilesSelectItem(Sender: TObject; Item: TListItem;
+  Selected: Boolean);
+Var
+  arrFiles: TStringArray;
+  sFile: String;
+Begin
+  If FSelecting Then
+    Exit;
+
+  arrFiles := [];
+  sFile := IncludeSlash(ExtractFileDir(fmeSyncedVideo.Filename)) + Item.Subitems[1];
+  AddStringToArray(arrFiles, sFile);
+
+  FDontAsk := True;
+  OpenVideo(arrFiles);
+  FDontAsk := False;
 End;
 
 Procedure TfrmSyncedVideoPlayer.OpenVideo(Const AFiles: TStrings);
@@ -198,12 +292,12 @@ Begin
     If TryParseInspectionFilename(sFile, oInspectionFilenameInfo) And
       oInspectionFilenameInfo.FoundDateTime Then
     Begin
-      If MessageDlg('Open related files?',
+      If FDontAsk Or (MessageDlg('Open related files?',
         'This filename appears to contain a start time:' + LineEnding +
         LineEnding + DateTimeToStr(oInspectionFilenameInfo.DateTime) +
         LineEnding + LineEnding +
         'Do you want to search the same folder for files in the same time window?',
-        mtConfirmation, [mbYes, mbNo], 0) = mrYes Then
+        mtConfirmation, [mbYes, mbNo], 0) = mrYes) Then
       Begin
         // Adjust this window to taste.  Currently +/- 5 seconds
         dtStart := IncSecond(oInspectionFilenameInfo.DateTime, -5);
@@ -270,6 +364,9 @@ Begin
       // Play the video
       fmeSyncedVideo.Play;
       fmeVideoPlayer.RefreshUI;
+
+      If Not FDontAsk Then
+        ParseFolder(fmeSyncedVideo.Filename);
     End;
   Finally
     EndFormUpdate;
@@ -307,6 +404,24 @@ Begin
     Finally
       slFiles.Free;
     End;
+  End;
+End;
+
+Procedure TfrmSyncedVideoPlayer.mnuToggleVideoClick(Sender: TObject);
+Begin
+  If (fmeSyncedVideo.VideoFileCount Mod 2) = 0 Then
+  Begin
+    If (Width > Height) Then
+      fmeSyncedVideo.Layout(1, fmeSyncedVideo.VideoFileCount)
+    Else
+      fmeSyncedVideo.Layout(fmeSyncedVideo.VideoFileCount, 1);
+  End
+  Else If fmeSyncedVideo.VideoFileCount <> 1 Then
+  Begin
+    If (Width > Height) Then
+      fmeSyncedVideo.Layout(2, 2, clsLeftToRightThenDown)
+    Else
+      fmeSyncedVideo.Layout(2, 2, clsTopToBottomThenRight);
   End;
 End;
 

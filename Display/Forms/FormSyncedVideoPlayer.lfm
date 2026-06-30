@@ -1,7 +1,7 @@
 inherited frmSyncedVideoPlayer: TfrmSyncedVideoPlayer
-  Left = 473
+  Left = 535
   Height = 532
-  Top = 124
+  Top = 141
   Width = 751
   AllowDropFiles = True
   Caption = 'Multichannel Video Player'
@@ -20,18 +20,38 @@ inherited frmSyncedVideoPlayer: TfrmSyncedVideoPlayer
   inherited sbMain: TStatusBar
     Top = 509
     Width = 751
+    Panels = <    
+      item
+        Width = 250
+      end    
+      item
+        Text = 'Start: 8888-88-88 00:00'
+        Width = 140
+      end    
+      item
+        Text = 'Duration: 88:88:88'
+        Width = 115
+      end    
+      item
+        Text = 'End: 8888-88-88 88:88'
+        Width = 140
+      end    
+      item
+        Width = 50
+      end>
+    SimplePanel = False
   end
   object pnlVideoPlayer: TPanel[2]
-    Left = 255
+    Left = 288
     Height = 486
     Top = 0
-    Width = 496
+    Width = 463
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 0
   end
   object Splitter1: TSplitter[3]
-    Left = 250
+    Left = 283
     Height = 486
     Top = 0
     Width = 5
@@ -40,7 +60,7 @@ inherited frmSyncedVideoPlayer: TfrmSyncedVideoPlayer
     Left = 0
     Height = 486
     Top = 0
-    Width = 250
+    Width = 283
     Align = alLeft
     Columns = <    
       item
@@ -48,7 +68,11 @@ inherited frmSyncedVideoPlayer: TfrmSyncedVideoPlayer
       end    
       item
         Caption = 'Date'
-        Width = 75
+        Width = 70
+      end    
+      item
+        Caption = 'Files'
+        Width = 35
       end    
       item
         Caption = 'File'

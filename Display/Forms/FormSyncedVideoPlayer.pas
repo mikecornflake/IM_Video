@@ -42,7 +42,7 @@ Type
     fmeSyncedVideo: TFrameSyncedVideo;
     FMRU: TMRU;
     FLoaded: Boolean;
-    FDontAsk: Boolean;
+    FInternalLoad: Boolean;
     FSelecting: Boolean;
 
     Procedure OpenVideo(Const AFiles: TStrings); Overload;
@@ -103,8 +103,15 @@ Begin
   FMRU.Files := True;
 
   FLoaded := False;
-  FDontAsk := False;
+  FInternalLoad := False;
   FSelecting := False;
+
+  Caption := Application.Title;
+
+  sbMain.Panels[0].Text := '';
+  sbMain.Panels[1].Text := 'Start:';
+  sbMain.Panels[2].Text := 'Duration:';
+  sbMain.Panels[3].Text := 'End:';
 End;
 
 Procedure TfrmSyncedVideoPlayer.FormActivate(Sender: TObject);
@@ -121,11 +128,6 @@ Begin
     Begin
       slFiles := TStringList.Create;
       Try
-        sbMain.SimpleText := IntToStr(Application.ParamCount);
-
-        If Application.ParamCount >= 1 Then
-          sbMain.SimpleText := Application.Params[1];
-
         For i := 1 To Application.ParamCount Do
         Begin
           sFile := Application.Params[i];
@@ -160,60 +162,185 @@ Begin
   Inherited;
 End;
 
+Const
+  RELATED_VIDEO_WINDOW_SEC = 10;
+
+Type
+  TVideoFileInfo = Record
+    FullName: String;
+    FileName: String;
+    HasDateTime: Boolean;
+    DateTime: TDateTime;
+  End;
+
+Function SecondsApart(Const A, B: TDateTime): Double;
+Begin
+  Result := Abs(A - B) * 24 * 60 * 60;
+End;
+
+Function CompareVideoFileInfo(Const A, B: TVideoFileInfo): Integer;
+Begin
+  If A.HasDateTime And B.HasDateTime Then
+  Begin
+    If A.DateTime < B.DateTime Then Exit(-1);
+    If A.DateTime > B.DateTime Then Exit(1);
+    Result := CompareText(A.FileName, B.FileName);
+  End
+  Else If A.HasDateTime Then
+    Result := -1
+  Else If B.HasDateTime Then
+    Result := 1
+  Else
+    Result := CompareText(A.FileName, B.FileName);
+End;
+
+Procedure SortVideoFiles(Var AFiles: Array Of TVideoFileInfo);
+
+  Procedure QuickSort(L, R: Integer);
+  Var
+    I, J: Integer;
+    Pivot, Temp: TVideoFileInfo;
+  Begin
+    I := L;
+    J := R;
+    Pivot := AFiles[(L + R) Div 2];
+
+    Repeat
+      While CompareVideoFileInfo(AFiles[I], Pivot) < 0 Do Inc(I);
+      While CompareVideoFileInfo(AFiles[J], Pivot) > 0 Do Dec(J);
+
+      If I <= J Then
+      Begin
+        Temp := AFiles[I];
+        AFiles[I] := AFiles[J];
+        AFiles[J] := Temp;
+        Inc(I);
+        Dec(J);
+      End;
+    Until I > J;
+
+    If L < J Then QuickSort(L, J);
+    If I < R Then QuickSort(I, R);
+  End;
+
+Begin
+  If Length(AFiles) > 1 Then
+    QuickSort(0, High(AFiles));
+End;
+
 Procedure TfrmSyncedVideoPlayer.ParseFolder(AFile: String);
 Var
   sFolder, sExt, sSearchMask, sFullName: String;
   oSearchRec: TSearchRec;
+  oParsedInfo: TInspectionFilenameInfo;
+  Files: Array Of TVideoFileInfo;
+  i, iGroupStart, iCount: Integer;
   oItem, oSelect: TListItem;
-  oFileInfo: TInspectionFilenameInfo;
-Begin
-  sFolder := ExtractFileDir(AFile);
+  bSelectedInGroup: Boolean;
 
+  Procedure AddFile(Const AFullName, AFileName: String);
+  Var
+    n: Integer;
+  Begin
+    n := Length(Files);
+    SetLength(Files, n + 1);
+
+    Files[n].FullName := AFullName;
+    Files[n].FileName := AFileName;
+    Files[n].HasDateTime := TryParseInspectionFilename(AFullName, oParsedInfo);
+
+    If Files[n].HasDateTime Then
+      Files[n].DateTime := oParsedInfo.DateTime
+    Else
+      Files[n].DateTime := 0;
+  End;
+
+Begin
+  oSelect := Nil;
+  sFolder := ExtractFileDir(AFile);
   sSearchMask := IncludeTrailingPathDelimiter(sFolder) + '*.*';
+
+  If FindFirst(sSearchMask, faAnyFile And Not faDirectory, oSearchRec) = 0 Then
+  Begin
+    Try
+      Repeat
+        sFullName := IncludeTrailingPathDelimiter(sFolder) + oSearchRec.Name;
+        sExt := ExtractFileExt(sFullName);
+
+        If IsVideo(sExt) Then
+          AddFile(sFullName, oSearchRec.Name);
+
+      Until FindNext(oSearchRec) <> 0;
+    Finally
+      FindClose(oSearchRec);
+    End;
+  End;
+
+  SortVideoFiles(Files);
 
   lvFiles.Items.Clear;
   lvFiles.BeginUpdate;
   Try
-    If FindFirst(sSearchMask, faAnyFile And Not faDirectory, oSearchRec) = 0 Then
+    i := 0;
+
+    While i <= High(Files) Do
     Begin
-      Try
-        Repeat
-          sFullName := IncludeTrailingPathDelimiter(sFolder) + oSearchRec.Name;
-          sExt := ExtractFileExt(sFullName);
+      iGroupStart := i;
+      iCount := 1;
+      bSelectedInGroup := SameFileName(Files[i].FullName, AFile);
 
-          If IsVideo(sExt) Then
-          Begin
-            If TryParseInspectionFilename(sFullName, oFileInfo) Then
-            Begin
-              oItem := lvFiles.Items.Add;
-              oItem.Caption := FormatDateTime('HH:nn:ss', oFileInfo.DateTime);
-              oItem.SubItems.Add(FormatDateTime('yyyy-mm-dd', oFileInfo.DateTime));
-              oItem.SubItems.Add(oSearchRec.Name);
-            End
-            Else
-            Begin
-              oItem := lvFiles.Items.Add;
-              oItem.Caption := '';
-              oItem.SubItems.Add('');
-              oItem.SubItems.Add(oSearchRec.Name);
-            End;
+      If Files[i].HasDateTime Then
+      Begin
+        Inc(i);
 
-            If sFullName = AFile Then
-              oSelect := oItem;
-          End;
-        Until FindNext(oSearchRec) <> 0;
-      Finally
-        FindClose(oSearchRec);
+        While (i <= High(Files)) And
+              Files[i].HasDateTime And
+              (SecondsApart(Files[i].DateTime, Files[iGroupStart].DateTime) <= RELATED_VIDEO_WINDOW_SEC) Do
+        Begin
+          Inc(iCount);
+
+          If SameFileName(Files[i].FullName, AFile) Then
+            bSelectedInGroup := True;
+
+          Inc(i);
+        End;
+      End
+      Else
+        Inc(i);
+
+      oItem := lvFiles.Items.Add;
+
+      If Files[iGroupStart].HasDateTime Then
+      Begin
+        oItem.Caption := FormatDateTime('HH:nn:ss', Files[iGroupStart].DateTime);
+        oItem.SubItems.Add(FormatDateTime('yyyy-mm-dd', Files[iGroupStart].DateTime));
+      End
+      Else
+      Begin
+        oItem.Caption := '';
+        oItem.SubItems.Add('');
       End;
+
+      oItem.SubItems.Add(IntToStr(iCount));
+      oItem.SubItems.Add(Files[iGroupStart].FileName);
+
+      If bSelectedInGroup Then
+        oSelect := oItem;
     End;
+
   Finally
     lvFiles.EndUpdate;
 
     If Assigned(oSelect) Then
     Begin
       FSelecting := True;
-      oSelect.Selected := True;
-      FSelecting := False;
+      Try
+        oSelect.Selected := True;
+        oSelect.Focused := True;
+        oSelect.MakeVisible(False);
+      Finally
+        FSelecting := False;
+      End;
     End;
   End;
 End;
@@ -251,12 +378,12 @@ Begin
     Exit;
 
   arrFiles := [];
-  sFile := IncludeSlash(ExtractFileDir(fmeSyncedVideo.Filename)) + Item.Subitems[1];
+  sFile := IncludeSlash(ExtractFileDir(fmeSyncedVideo.Filename)) + Item.Subitems[2];
   AddStringToArray(arrFiles, sFile);
 
-  FDontAsk := True;
+  FInternalLoad := True;
   OpenVideo(arrFiles);
-  FDontAsk := False;
+  FInternalLoad := False;
 End;
 
 Procedure TfrmSyncedVideoPlayer.OpenVideo(Const AFiles: TStrings);
@@ -292,7 +419,7 @@ Begin
     If TryParseInspectionFilename(sFile, oInspectionFilenameInfo) And
       oInspectionFilenameInfo.FoundDateTime Then
     Begin
-      If FDontAsk Or (MessageDlg('Open related files?',
+      If FInternalLoad Or (MessageDlg('Open related files?',
         'This filename appears to contain a start time:' + LineEnding +
         LineEnding + DateTimeToStr(oInspectionFilenameInfo.DateTime) +
         LineEnding + LineEnding +
@@ -365,7 +492,16 @@ Begin
       fmeSyncedVideo.Play;
       fmeVideoPlayer.RefreshUI;
 
-      If Not FDontAsk Then
+      Caption := Format('%s: %s', [Application.Title, fmeSyncedVideo.Filename]);
+
+      sbMain.Panels[1].Text := 'Start: ' + FormatDateTime('yyyy-mm-dd HH:nn',
+        fmeSyncedVideo.StartDateTime);
+      sbMain.Panels[2].Text := 'Duration: ' + FormatDateTime('HH:nn:ss',
+        fmeSyncedVideo.DurationAsTime);
+      sbMain.Panels[3].Text := 'End: ' + FormatDateTime('yyyy-mm-dd HH:nn',
+        fmeSyncedVideo.EndDateTime);
+
+      If Not FInternalLoad Then
         ParseFolder(fmeSyncedVideo.Filename);
     End;
   Finally

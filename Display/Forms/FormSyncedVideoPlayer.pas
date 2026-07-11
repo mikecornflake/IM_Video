@@ -7,8 +7,8 @@ Interface
 
 Uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
-  Buttons, Menus, ActnList, ComCtrls, FrameVideoPlayer, FrameSyncedVideo,
-  FormMain, IniFiles, MRUs;
+  Buttons, Menus, ActnList, ComCtrls, ShellCtrls, FrameVideoPlayer,
+  FrameSyncedVideo, FormMain, IniFiles, MRUs;
 
 Type
 
@@ -18,6 +18,7 @@ Type
     lvFiles: TListView;
     mnuToggleVideo: TMenuItem;
     mnuView: TMenuItem;
+    pnlLeft: TPanel;
     Separator1: TMenuItem;
     mnuOpenRecent: TMenuItem;
     mnuExit: TMenuItem;
@@ -25,7 +26,9 @@ Type
     mnuOpen: TMenuItem;
     dlgOpen: TOpenDialog;
     pnlVideoPlayer: TPanel;
+    tvFolders: TShellTreeView;
     Splitter1: TSplitter;
+    Splitter2: TSplitter;
     tmrUpdate: TTimer;
     Procedure FormActivate(Sender: TObject);
     Procedure FormClose(Sender: TObject; Var CloseAction: TCloseAction);
@@ -39,6 +42,7 @@ Type
     Procedure mnuOpenRecentClick(Sender: TObject);
     Procedure mnuToggleVideoClick(Sender: TObject);
     Procedure tmrUpdateTimer(Sender: TObject);
+    Procedure tvFoldersSelectionChanged(Sender: TObject);
   Private
     fmeVideoPlayer: TFrameVideoPlayer;
     fmeSyncedVideo: TFrameSyncedVideo;
@@ -46,6 +50,7 @@ Type
     FLoaded: Boolean;
     FInternalLoad: Boolean;
     FIgnoreListViewSelectItem: Integer;
+    FIgnoreTreeViewChange: Integer;
     FFolder: String;
 
     Procedure OpenVideo(Const AFiles: TStrings); Overload;
@@ -64,7 +69,7 @@ Implementation
 
 Uses
   FileSupport, VideoEngineFactory, ControlGridLayout, StringSupport,
-  InspectionSupport, DateUtils,
+  InspectionSupport, DateUtils, ControlsSupport,
 
   // Include all required video playback engines below this point
   FrameVideoLibmpv;
@@ -108,6 +113,7 @@ Begin
   FLoaded := False;
   FInternalLoad := False;
   FIgnoreListViewSelectItem := 0;
+  FIgnoreTreeViewChange := 0;
   FFolder := '';
 
   Caption := Application.Title;
@@ -234,13 +240,14 @@ End;
 
 Procedure TfrmSyncedVideoPlayer.ParseFolder(AFile: String);
 Var
-  sFolder, sExt, sSearchMask, sFullName: String;
+  sFolder, sExt, sSearchMask, sFullName, sDrive: String;
   oSearchRec: TSearchRec;
   oParsedInfo: TInspectionFilenameInfo;
   Files: Array Of TVideoFileInfo;
   i, iGroupStart, iCount: Integer;
   oItem, oSelect: TListItem;
   bSelectedInGroup: Boolean;
+  bFolder: Boolean;
 
   Procedure AddFile(Const AFullName, AFileName: String);
   Var
@@ -251,7 +258,8 @@ Var
 
     Files[n].FullName := AFullName;
     Files[n].FileName := AFileName;
-    Files[n].HasDateTime := TryParseInspectionFilename(AFullName, oParsedInfo);
+    Files[n].HasDateTime :=
+      TryParseInspectionFilename(AFullName, oParsedInfo);
 
     If Files[n].HasDateTime Then
       Files[n].DateTime := oParsedInfo.DateTime
@@ -261,14 +269,26 @@ Var
 
 Begin
   oSelect := nil;
-  sFolder := ExtractFileDir(AFile);
+
+  bFolder := DirectoryExists(AFile);
+
+  If bFolder Then
+    sFolder := ExcludeTrailingPathDelimiter(AFile)
+  Else
+    sFolder := ExtractFileDir(AFile);
+
+  If Not DirectoryExists(sFolder) Then
+    Exit;
+
+  sDrive := IncludeSlash(ExtractFileDrive(sFolder));
   sSearchMask := IncludeTrailingPathDelimiter(sFolder) + '*.*';
 
   If FindFirst(sSearchMask, faAnyFile And Not faDirectory, oSearchRec) = 0 Then
   Begin
     Try
       Repeat
-        sFullName := IncludeTrailingPathDelimiter(sFolder) + oSearchRec.Name;
+        sFullName :=
+          IncludeTrailingPathDelimiter(sFolder) + oSearchRec.Name;
         sExt := ExtractFileExt(sFullName);
 
         If IsVideo(sExt) Then
@@ -282,16 +302,18 @@ Begin
 
   SortVideoFiles(Files);
 
-  lvFiles.Items.Clear;
   lvFiles.BeginUpdate;
   Try
+    lvFiles.Items.Clear;
+
     i := 0;
 
     While i <= High(Files) Do
     Begin
       iGroupStart := i;
       iCount := 1;
-      bSelectedInGroup := SameFileName(Files[i].FullName, AFile);
+
+      bSelectedInGroup := Not bFolder And SameFileName(Files[i].FullName, AFile);
 
       If Files[i].HasDateTime Then
       Begin
@@ -303,7 +325,7 @@ Begin
         Begin
           Inc(iCount);
 
-          If SameFileName(Files[i].FullName, AFile) Then
+          If Not bFolder And SameFileName(Files[i].FullName, AFile) Then
             bSelectedInGroup := True;
 
           Inc(i);
@@ -316,8 +338,11 @@ Begin
 
       If Files[iGroupStart].HasDateTime Then
       Begin
-        oItem.Caption := FormatDateTime('HH:nn:ss', Files[iGroupStart].DateTime);
-        oItem.SubItems.Add(FormatDateTime('yyyy-mm-dd', Files[iGroupStart].DateTime));
+        oItem.Caption :=
+          FormatDateTime('HH:nn:ss', Files[iGroupStart].DateTime);
+        oItem.SubItems.Add(
+          FormatDateTime('yyyy-mm-dd', Files[iGroupStart].DateTime)
+          );
       End
       Else
       Begin
@@ -334,18 +359,37 @@ Begin
 
   Finally
     lvFiles.EndUpdate;
+  End;
 
+  FFolder := sFolder;
+
+  Inc(FIgnoreListViewSelectItem);
+  Try
     If Assigned(oSelect) Then
     Begin
-      Inc(FIgnoreListViewSelectItem);
-      Try
-        oSelect.Selected := True;
-        oSelect.Focused := True;
-        oSelect.MakeVisible(False);
-      Finally
-        Dec(FIgnoreListViewSelectItem);
-      End;
-    End;
+      oSelect.Selected := True;
+      oSelect.Focused := True;
+      oSelect.MakeVisible(False);
+    End
+    Else
+    Begin
+      fmeVideoPlayer.Clear;
+      fmeSyncedVideo.BeginLoadVideos;
+      fmeSyncedVideo.EndLoadVideos;
+    end;
+  Finally
+    Dec(FIgnoreListViewSelectItem);
+  End;
+
+  Inc(FIgnoreTreeViewChange);
+  Try
+    If tvFolders.Root <> sDrive Then
+      tvFolders.Root := sDrive;
+
+    If Not SameFileName(ExcludeSlash(tvFolders.Path),ExcludeSlash(sFolder)) Then
+      tvFolders.Path := sFolder;
+  Finally
+    Dec(FIgnoreTreeViewChange);
   End;
 End;
 
@@ -388,9 +432,20 @@ Begin
     AddStringToArray(arrFiles, sFile);
 
     FInternalLoad := True;
-    OpenVideo(arrFiles);
-    FInternalLoad := False;
+    Try
+      OpenVideo(arrFiles);
+    Finally
+      FInternalLoad := False;
+    End;
   End;
+End;
+
+Procedure TfrmSyncedVideoPlayer.tvFoldersSelectionChanged(Sender: TObject);
+Begin
+  If FIgnoreTreeViewChange > 0 Then
+    Exit;
+
+  ParseFolder(tvFolders.Path);
 End;
 
 Procedure TfrmSyncedVideoPlayer.OpenVideo(Const AFiles: TStrings);

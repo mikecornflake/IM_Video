@@ -1,4 +1,4 @@
-inherited frmSyncedVideoPlayer: TfrmSyncedVideoPlayer
+inherited frmIMVideo: TfrmIMVideo
   Left = 363
   Height = 532
   Top = 304

@@ -1,4 +1,4 @@
-Unit FormSyncedVideoPlayer;
+Unit FormIMVideo;
 
 {$mode objfpc}{$H+}
 {$WARN 5024 off : Parameter "$1" not used}
@@ -12,9 +12,9 @@ Uses
 
 Type
 
-  { TfrmSyncedVideoPlayer }
+  { TfrmIMVideo }
 
-  TfrmSyncedVideoPlayer = Class(TFormMain)
+  TfrmIMVideo = Class(TFormMain)
     btnRefresh: TBitBtn;
     edtRoot: TDirectoryEdit;
     lvFiles: TListView;
@@ -67,7 +67,7 @@ Type
   End;
 
 Var
-  frmSyncedVideoPlayer: TfrmSyncedVideoPlayer;
+  frmIMVideo: TfrmIMVideo;
 
 Implementation
 
@@ -80,9 +80,9 @@ Uses
 
   {$R *.lfm}
 
-  { TfrmSyncedVideoPlayer }
+  { TfrmIMVideo }
 
-Procedure TfrmSyncedVideoPlayer.FormCreate(Sender: TObject);
+Procedure TfrmIMVideo.FormCreate(Sender: TObject);
 Begin
   Inherited;
 
@@ -130,7 +130,7 @@ Begin
 End;
 
 
-Procedure TfrmSyncedVideoPlayer.FormActivate(Sender: TObject);
+Procedure TfrmIMVideo.FormActivate(Sender: TObject);
 Var
   slFiles: TStringList;
   i: Integer;
@@ -163,7 +163,7 @@ Begin
   End;
 End;
 
-Procedure TfrmSyncedVideoPlayer.btnRefreshClick(Sender: TObject);
+Procedure TfrmIMVideo.btnRefreshClick(Sender: TObject);
 Begin
   If DirectoryExists(FFolder) Then
   Begin
@@ -172,7 +172,7 @@ Begin
   End;
 End;
 
-Procedure TfrmSyncedVideoPlayer.edtRootChange(Sender: TObject);
+Procedure TfrmIMVideo.edtRootChange(Sender: TObject);
 Begin
   // We may manually set contents during ParseFolder, in code where
   // FIgnoreTreeViewChange is incremented
@@ -183,7 +183,7 @@ Begin
     tvFolders.Root := edtRoot.Directory;
 End;
 
-Procedure TfrmSyncedVideoPlayer.FormClose(Sender: TObject; Var CloseAction: TCloseAction);
+Procedure TfrmIMVideo.FormClose(Sender: TObject; Var CloseAction: TCloseAction);
 Begin
   If Assigned(fmeVideoPlayer) Then
     fmeVideoPlayer.Clear;
@@ -191,7 +191,7 @@ Begin
   Inherited;
 End;
 
-Procedure TfrmSyncedVideoPlayer.FormDestroy(Sender: TObject);
+Procedure TfrmIMVideo.FormDestroy(Sender: TObject);
 Begin
   FreeAndNil(FMRU);
 
@@ -264,7 +264,7 @@ Begin
     QuickSort(0, High(AFiles));
 End;
 
-Procedure TfrmSyncedVideoPlayer.ParseFolder(AFile: String);
+Procedure TfrmIMVideo.ParseFolder(AFile: String);
 Var
   sFolder, sExt, sSearchMask, sFullName, sDrive, sTemp: String;
   oSearchRec: TSearchRec;
@@ -423,7 +423,7 @@ Begin
   End;
 End;
 
-Procedure TfrmSyncedVideoPlayer.FormDropFiles(Sender: TObject; Const FileNames: Array Of String);
+Procedure TfrmIMVideo.FormDropFiles(Sender: TObject; Const FileNames: Array Of String);
 Var
   sExt, sFile: String;
   slFiles: TStringList;
@@ -446,7 +446,7 @@ Begin
   End;
 End;
 
-Procedure TfrmSyncedVideoPlayer.lvFilesSelectItem(Sender: TObject; Item: TListItem;
+Procedure TfrmIMVideo.lvFilesSelectItem(Sender: TObject; Item: TListItem;
   Selected: Boolean);
 Var
   arrFiles: TStringArray;
@@ -470,7 +470,7 @@ Begin
   End;
 End;
 
-Procedure TfrmSyncedVideoPlayer.tvFoldersSelectionChanged(Sender: TObject);
+Procedure TfrmIMVideo.tvFoldersSelectionChanged(Sender: TObject);
 Begin
   If FIgnoreTreeViewChange > 0 Then
     Exit;
@@ -478,7 +478,7 @@ Begin
   ParseFolder(tvFolders.Path);
 End;
 
-Procedure TfrmSyncedVideoPlayer.OpenVideo(Const AFiles: TStrings);
+Procedure TfrmIMVideo.OpenVideo(Const AFiles: TStrings);
 Var
   arrFiles: TStringArray;
 Begin
@@ -486,7 +486,7 @@ Begin
   OpenVideo(arrFiles);
 End;
 
-Procedure TfrmSyncedVideoPlayer.OpenVideo(Const AFiles: TStringArray);
+Procedure TfrmIMVideo.OpenVideo(Const AFiles: TStringArray);
 Var
   arrFiles: TStringArray;
   sFile, sChannel: String;
@@ -598,18 +598,18 @@ Begin
   End;
 End;
 
-Procedure TfrmSyncedVideoPlayer.mnuExitClick(Sender: TObject);
+Procedure TfrmIMVideo.mnuExitClick(Sender: TObject);
 Begin
   Close;
 End;
 
-Procedure TfrmSyncedVideoPlayer.mnuFileClick(Sender: TObject);
+Procedure TfrmIMVideo.mnuFileClick(Sender: TObject);
 Begin
   FMRU.Populate(mnuOpenRecent, @mnuOpenRecentClick);
   mnuOpenRecent.Enabled := FMRU.Count > 0;
 End;
 
-Procedure TfrmSyncedVideoPlayer.mnuOpenClick(Sender: TObject);
+Procedure TfrmIMVideo.mnuOpenClick(Sender: TObject);
 Begin
   If dlgOpen.Execute Then
   Begin
@@ -617,7 +617,7 @@ Begin
   End;
 End;
 
-Procedure TfrmSyncedVideoPlayer.mnuOpenRecentClick(Sender: TObject);
+Procedure TfrmIMVideo.mnuOpenRecentClick(Sender: TObject);
 Var
   slFiles: TStringList;
 Begin
@@ -633,7 +633,7 @@ Begin
   End;
 End;
 
-Procedure TfrmSyncedVideoPlayer.mnuToggleVideoClick(Sender: TObject);
+Procedure TfrmIMVideo.mnuToggleVideoClick(Sender: TObject);
 Begin
   If (fmeSyncedVideo.VideoFileCount Mod 2) = 0 Then
   Begin
@@ -651,7 +651,7 @@ Begin
   End;
 End;
 
-Procedure TfrmSyncedVideoPlayer.tmrUpdateTimer(Sender: TObject);
+Procedure TfrmIMVideo.tmrUpdateTimer(Sender: TObject);
 Begin
   tmrUpdate.Enabled := False;
 
@@ -663,7 +663,7 @@ Begin
     fmeSyncedVideo.EndDateTime);
 End;
 
-Procedure TfrmSyncedVideoPlayer.LoadLocalSettings(oInifile: TIniFile);
+Procedure TfrmIMVideo.LoadLocalSettings(oInifile: TIniFile);
 Var
   sFolder, sRoot: String;
 Begin
@@ -689,7 +689,7 @@ Begin
     ParseFolder(sFolder);
 End;
 
-Procedure TfrmSyncedVideoPlayer.SaveLocalSettings(oInifile: TIniFile);
+Procedure TfrmIMVideo.SaveLocalSettings(oInifile: TIniFile);
 Begin
   Inherited;
 

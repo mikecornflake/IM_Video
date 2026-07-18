@@ -8,7 +8,7 @@
         <CompatibilityMode Value="True"/>
       </Flags>
       <SessionStorage Value="InProjectDir"/>
-      <Title Value="Simple Synced Video Player"/>
+      <Title Value="Inspector Mike Video Player"/>
       <ResourceType Value="res"/>
       <UseXPManifest Value="True"/>
       <XPManifest>
@@ -24,7 +24,7 @@
       <MinorVersionNr Value="1"/>
       <BuildNr Value="2"/>
       <Language Value="0809"/>
-      <StringTable Comments="Simple Synced Video Viewer, using a configurable video player backend" CompanyName="Inspector Mike Pty Ltd" LegalCopyright="(c) 2026" ProductVersion="0.1"/>
+      <StringTable Comments="Single or Multichannel Video Player" CompanyName="Inspector Mike Pty Ltd" LegalCopyright="(c) 2026" ProductVersion="0.1"/>
     </VersionInfo>
     <BuildModes Count="1">
       <Item1 Name="Default" Default="True"/>
@@ -51,13 +51,13 @@
     </RequiredPackages>
     <Units Count="2">
       <Unit0>
-        <Filename Value="SimpleSyncedVideoPlayer.lpr"/>
+        <Filename Value="IM_Video.lpr"/>
         <IsPartOfProject Value="True"/>
       </Unit0>
       <Unit1>
-        <Filename Value="Display\Forms\FormSyncedVideoPlayer.pas"/>
+        <Filename Value="Display\Forms\FormIMVideo.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="frmSyncedVideoPlayer"/>
+        <ComponentName Value="frmIMVideo"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
       </Unit1>
@@ -67,7 +67,7 @@
     <Version Value="11"/>
     <PathDelim Value="\"/>
     <Target>
-      <Filename Value="$(TestDir)\$NameOnly($(ProjFile))\$NameOnly($(ProjFile))"/>
+      <Filename Value="$(TestDir)\$NameOnly($(ProjFile))\IM_Video"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>

@@ -1,4 +1,4 @@
-program SimpleVideoPlayer;
+program IM_Video;
 
 {$mode objfpc}{$H+}
 
@@ -7,15 +7,15 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, FormSyncedVideoPlayer;
+  Forms, FormIMVideo;
 
 {$R *.res}
 
 begin
-  Application.Title:='Simple Synced Video Player';
+  Application.Title:='Inspector Mike Video Player';
   RequireDerivedFormResource := True;
   Application.Initialize;
-  Application.CreateForm(TfrmSyncedVideoPlayer, frmSyncedVideoPlayer);
+  Application.CreateForm(TfrmIMVideo, frmIMVideo);
   Application.Run;
 end.
 

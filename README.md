@@ -17,7 +17,7 @@ application
   - Synchronous playback controls (Play, Pause, Seek)
   - Automatic layout of multiple video channels
   - Variable speed playback
-  - Mouse wheel seek (±3 seconds, ±1 seconds with Ctrl, ±6 seconds 
+  - Mouse wheel seek (Â±3 seconds, Â±1 seconds with Ctrl, Â±6 seconds 
 with Shift)
   - Spacebar pause/resume
   - Frame/image capture
@@ -157,10 +157,3 @@ Please keep the acknowledgements and consider
 offering useful changes back to Mike Thompson, 
 URUWorks, or the mpv team, depending on 
 which part of the code you modify.
-
-## Can I make money from my version?
-
-Yes.
-
-Just comply with the GPL-3.0 licence and keep the 
-acknowledgements.

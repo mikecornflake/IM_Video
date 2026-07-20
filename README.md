@@ -10,8 +10,6 @@ player built around the excellent **mpv** media engine.
 ## Features
 
 - Browse video by folder hierarchy
-- Open associated Anomaly and Stills folders directly from the 
-application
 - Support for MPV-based video playback within the application:
   - Play one to four synchronised video channels simultaneously
   - Synchronous playback controls (Play, Pause, Seek)
@@ -41,9 +39,11 @@ This project is currently developed and tested using:
 - Lazarus Trunk (4.8)
 - Free Pascal Compiler 3.2 Fixes Branch
 
-### Required Packages
+### Dependencies
 
-The following packages are required from InspectorMike Common:
+#### Inspector Mike Common Repository
+
+The following packages are required from InspectorMike Common Repository:
 
 - IM_units.lpk
 - IM_forms.lpk
@@ -54,12 +54,16 @@ Repository:
 
 https://github.com/mikecornflake/InspectorMike-common
 
+#### HTML Viewer
+
+Used in About Form...
+
 Install the following package from the Lazarus 
 Online Package Manager (OPM):
 
 - TurboPowerIPro.lpk
 
-### Video Playback
+#### Video Playback
 
 Video playback is provided by UW_MPVPlayer:
 
@@ -69,7 +73,7 @@ Required package:
 
 - uwmpvplayer.lpk
 
-### MPV Runtime
+#### MPV Runtime
 
 A copy of `libmpv-2.dll` must be available at runtime.
 

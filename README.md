@@ -1,4 +1,4 @@
-# IM_Video
+# Inspector Mike Video Player
 
 **Inspector Mike Video Player** is a single and multi-channel video
 player designed for offshore inspection and ROV operations.
@@ -9,69 +9,106 @@ player built around the excellent **mpv** media engine.
 
 ## Features
 
--   Single or multi-channel video playback
--   Synchronous playback of multiple video streams
--   Mouse wheel seeking with configurable fast and slow scrolling
--   Frame capture directly to the clipboard
--   Save individual frames to image files
--   Most Recently Used (MRU) file list
--   Remembers the last opened folder
--   Clean, lightweight interface
--   Playback powered by **mpv**
+- Browse video by folder hierarchy
+- Open associated Anomaly and Stills folders directly from the 
+application
+- Support for MPV-based video playback within the application:
+  - Play one to four synchronised video channels simultaneously
+  - Synchronous playback controls (Play, Pause, Seek)
+  - Automatic layout of multiple video channels
+  - Variable speed playback
+  - Mouse wheel seek (±3 seconds, ±1 seconds with Ctrl, ±6 seconds 
+with Shift)
+  - Spacebar pause/resume
+  - Frame/image capture
+- Multichannel video is currently treated as a set of video files
+  in the same folder starting within 10 seconds of each other.
+  Awareness of video naming protocols from various subsea
+  inspection packages. This allows start date/time to be
+  determined.
+  
+## Licence
 
-## Requirements
+This code and executable are released under GPL-3.0.
 
-### Runtime
+You are free to use, distribute and modify this software, 
+but please keep the acknowledgements intact.
 
-IM_Video requires the **mpv** runtime libraries to be installed or
-distributed alongside the application.
+## Build information
 
-### Build Requirements
+This project is currently developed and tested using:
 
-The project is developed using **Lazarus / Free Pascal** and depends on
-the following packages from the **IM_Common** repository:
+- Lazarus Trunk (4.8)
+- Free Pascal Compiler 3.2 Fixes Branch
 
--   `IM_Units.lpk`
--   `IM_Forms.lpk`
--   `IM_Forms.Media.lpk`
--   `IM_Forms.Media.mpv.lpk`
+### Required Packages
 
-These packages provide the common framework, reusable controls and media
-playback components shared across the Inspector Mike application suite.
+The following packages are required from InspectorMike Common:
 
-## Playback
+- IM_units.lpk
+- IM_forms.lpk
+- IM_forms.media.lpk
+- IM_forms.media.mpv.lpk
 
-Media playback is provided by the excellent **mpv** project, allowing
-IM_Video to support the wide range of formats handled by mpv.
+Repository:
 
-## Mouse Controls
+https://github.com/mikecornflake/InspectorMike-common
 
--   Mouse wheel seeking
--   Slow and fast seek modes
--   Precise frame navigation for inspection work
+Install the following package from the Lazarus 
+Online Package Manager (OPM):
 
-## Frame Capture
+- TurboPowerIPro.lpk
 
-Individual frames may be:
+### Video Playback
 
--   Copied directly to the clipboard
--   Saved as image files
+Video playback is provided by UW_MPVPlayer:
 
-This makes it quick to capture evidence for reports and inspections.
+https://github.com/URUWorks/UW_MPVPlayer
 
-## Project Status
+Required package:
 
-IM_Video began life as a simple demonstration application hosting the
-reusable video playback frame from the IM_Common library.
+- uwmpvplayer.lpk
 
-Over time it has grown into a fully featured standalone inspection video
-player while continuing to showcase the reusable media framework.
+### MPV Runtime
 
-## Third Party Components
+A copy of `libmpv-2.dll` must be available at runtime.
+
+The DLL may be located in any of the following locations:
+
+- A directory included in the system `PATH`
+- The same directory as `IM_Video.exe`
+- An `mpv\x86_64` subdirectory beneath the application folder
+
+For example:
+
+```text
+IM_Video.exe
+libmpv-2.dll
+```
+or
+```text
+IM_Video.exe
+mpv\x86_64\libmpv-2.dll
+```
+
+## Acknowledgements
+
+Many thanks to the developers of:
+
+- Lazarus
+- Free Pascal
+- mpv
+- URUWorks UW_MPVPlayer
 
 ### mpv
 
-Playback is provided by the mpv media player project.
+This project uses the mpv DLL for video playback:
+
+https://github.com/mpv-player/mpv
+
+The Free Pascal mpv wrapper is by URUWorks:
+
+https://github.com/URUWorks/UW_MPVPlayer
 
 ### FatCow Hosting Icons
 
@@ -82,8 +119,48 @@ https://www.softicons.com/toolbar-icons/fatcow-hosting-icons-by-fatcow
 
 Many thanks to FatCow for making these icons freely available.
 
-## License
+# FAQ
 
-IM_Video is released under the **GNU General Public License (GPL)**.
+## Who am I?
 
-See the accompanying `LICENSE` file for details.
+This project is developed by Mike Thompson, 
+a CSWIP 3.4U Subsea Inspection Engineer and 
+former professional Delphi developer who 
+regularly works with offshore inspection 
+video from multiple contractors.
+
+- Inspector Mike 2.0 Pty Ltd
+- https://wiki.freepascal.org/User:Mike.cornflake
+- https://github.com/mikecornflake
+- mike.cornflake@gmail.com
+
+## Why release this?
+
+Commercial inspection DVR packages often provide 
+limited facilities for end clients to review 
+multiple synchronised video channels. This 
+project aims to make inspection video easier 
+to browse, review and analyse, while remaining 
+portable and suitable for offshore use.
+
+## Is this free?
+
+Yes.
+
+Just keep the acknowledgements.
+
+## Can I modify it?
+
+Yes.
+
+Please keep the acknowledgements and consider 
+offering useful changes back to Mike Thompson, 
+URUWorks, or the mpv team, depending on 
+which part of the code you modify.
+
+## Can I make money from my version?
+
+Yes.
+
+Just comply with the GPL-3.0 licence and keep the 
+acknowledgements.

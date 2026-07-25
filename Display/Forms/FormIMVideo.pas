@@ -126,9 +126,7 @@ Begin
   sbMain.Panels[1].Text := 'Start:';
   sbMain.Panels[2].Text := 'Duration:';
   sbMain.Panels[3].Text := 'End:';
-
 End;
-
 
 Procedure TfrmIMVideo.FormActivate(Sender: TObject);
 Var

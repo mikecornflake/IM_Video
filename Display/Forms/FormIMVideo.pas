@@ -15,13 +15,18 @@ Type
   { TfrmIMVideo }
 
   TfrmIMVideo = Class(TFormMain)
+    actFoldersOpenFolder: TAction;
+    alVideo: TActionList;
     btnRefresh: TBitBtn;
     edtRoot: TDirectoryEdit;
     lvFiles: TListView;
+    mnuOpenRecentFolder: TMenuItem;
+    mnuFolderOpenFolders: TMenuItem;
     mnuToggleVideo: TMenuItem;
     mnuView: TMenuItem;
     pnlDrive: TPanel;
     pnlLeft: TPanel;
+    pmFolders: TPopupMenu;
     Separator1: TMenuItem;
     mnuOpenRecent: TMenuItem;
     mnuExit: TMenuItem;
@@ -33,6 +38,7 @@ Type
     Splitter1: TSplitter;
     Splitter2: TSplitter;
     tmrUpdate: TTimer;
+    Procedure actFoldersOpenFolderExecute(Sender: TObject);
     Procedure btnRefreshClick(Sender: TObject);
     Procedure edtRootChange(Sender: TObject);
     Procedure FormActivate(Sender: TObject);
@@ -45,13 +51,14 @@ Type
     Procedure mnuFileClick(Sender: TObject);
     Procedure mnuOpenClick(Sender: TObject);
     Procedure mnuOpenRecentClick(Sender: TObject);
+    Procedure mnuOpenRecentFolderClick(Sender: TObject);
     Procedure mnuToggleVideoClick(Sender: TObject);
     Procedure tmrUpdateTimer(Sender: TObject);
     Procedure tvFoldersSelectionChanged(Sender: TObject);
   Private
     fmeVideoPlayer: TFrameVideoPlayer;
     fmeSyncedVideo: TFrameSyncedVideo;
-    FMRU: TMRU;
+    FMRUFiles, FMRUFolders: TMRU;
     FLoaded: Boolean;
     FInternalLoad: Boolean;
     FIgnoreListViewSelectItem: Integer;
@@ -60,7 +67,9 @@ Type
 
     Procedure OpenVideo(Const AFiles: TStrings); Overload;
     Procedure OpenVideo(Const AFiles: TStringArray); Overload;
-    Procedure ParseFolder(AFile: String);
+    Procedure OpenFolder(AFolder: String);
+
+    Procedure ParseFolderOrFileFolder(AFile: String);
   Public
     Procedure LoadLocalSettings(oInifile: TIniFile); Override;
     Procedure SaveLocalSettings(oInifile: TIniFile); Override;
@@ -73,7 +82,7 @@ Implementation
 
 Uses
   FileSupport, VideoEngineFactory, ControlGridLayout, StringSupport,
-  InspectionSupport, DateUtils, Math,
+  InspectionSupport, DateUtils, Math, OSSupport,
 
   // Include all required video playback engines below this point
   FrameVideoLibmpv;
@@ -110,9 +119,13 @@ Begin
   // Disable require --configure
   FAlwaysSaveSettings := True;
 
-  FMRU := TMRU.Create;
-  FMRU.Max := 10;
-  FMRU.Files := True;
+  FMRUFiles := TMRU.Create;
+  FMRUFiles.Max := 10;
+  FMRUFiles.Kind := mruFiles;
+
+  FMRUFolders := TMRU.Create;
+  FMRUFolders.Max := 10;
+  FMRUFolders.Kind := mruFolders;
 
   FLoaded := False;
   FInternalLoad := False;
@@ -127,6 +140,17 @@ Begin
   sbMain.Panels[2].Text := 'Duration:';
   sbMain.Panels[3].Text := 'End:';
 End;
+
+Procedure TfrmIMVideo.FormDestroy(Sender: TObject);
+Begin
+  FreeAndNil(FMRUFiles);
+  FreeAndNil(FMRUFolders);
+
+  FreeAndNil(fmeVideoPlayer);
+
+  Inherited;
+End;
+
 
 Procedure TfrmIMVideo.FormActivate(Sender: TObject);
 Var
@@ -166,8 +190,24 @@ Begin
   If DirectoryExists(FFolder) Then
   Begin
     tvFolders.Refresh(tvFolders.Selected);
-    //tvFolders.Path := FFolder;
+    ParseFolderOrFileFolder(tvFolders.Path);
   End;
+End;
+
+Procedure TfrmIMVideo.actFoldersOpenFolderExecute(Sender: TObject);
+Var
+  sFolder: String;
+Begin
+  If tvFolders.Items.Count = 0 Then
+    Exit;
+
+  If Not assigned(tvFolders.Selected) Then
+    Exit;
+
+  sFolder := tvFolders.Path;
+
+  If DirectoryExists(sFolder) Then
+    LaunchFile('explorer.exe', Format('/e,"%s"', [sFolder]));
 End;
 
 Procedure TfrmIMVideo.edtRootChange(Sender: TObject);
@@ -177,21 +217,13 @@ Begin
   If FIgnoreTreeViewChange > 0 Then
     Exit;
 
-  If DirectoryExists(edtRoot.Directory) Then
-    tvFolders.Root := edtRoot.Directory;
+  OpenFolder(edtRoot.Directory);
 End;
 
 Procedure TfrmIMVideo.FormClose(Sender: TObject; Var CloseAction: TCloseAction);
 Begin
   If Assigned(fmeVideoPlayer) Then
     fmeVideoPlayer.Clear;
-
-  Inherited;
-End;
-
-Procedure TfrmIMVideo.FormDestroy(Sender: TObject);
-Begin
-  FreeAndNil(FMRU);
 
   Inherited;
 End;
@@ -262,7 +294,7 @@ Begin
     QuickSort(0, High(AFiles));
 End;
 
-Procedure TfrmIMVideo.ParseFolder(AFile: String);
+Procedure TfrmIMVideo.ParseFolderOrFileFolder(AFile: String);
 Var
   sFolder, sExt, sSearchMask, sFullName, sDrive: String;
   oSearchRec: TSearchRec;
@@ -271,7 +303,7 @@ Var
   i, iGroupStart, iCount: Integer;
   oItem, oSelect: TListItem;
   bSelectedInGroup: Boolean;
-  bFolder: Boolean;
+  bFolder, bHasTimeInFilename: Boolean;
 
   Procedure AddFile(Const AFullName, AFileName: String);
   Var
@@ -332,6 +364,11 @@ Begin
 
     i := 0;
 
+    bHasTimeInFilename := False;
+
+    // First, let's work out if any of these files are multichannel
+    // baed on us having decoded times from the filenames and these
+    // times being within RELATED_VIDEO_WINDOW_SEC seconds of each other
     While i <= High(Files) Do
     Begin
       iGroupStart := i;
@@ -362,11 +399,10 @@ Begin
 
       If Files[iGroupStart].HasDateTime Then
       Begin
-        oItem.Caption :=
-          FormatDateTime('HH:nn:ss', Files[iGroupStart].DateTime);
-        oItem.SubItems.Add(
-          FormatDateTime('yyyy-mm-dd', Files[iGroupStart].DateTime)
-          );
+        bHasTimeInFilename := True;
+
+        oItem.Caption := FormatDateTime('yyyy-mm-dd', Files[iGroupStart].DateTime);
+        oItem.SubItems.Add(FormatDateTime('HH:nn:ss', Files[iGroupStart].DateTime));
       End
       Else
       Begin
@@ -377,18 +413,33 @@ Begin
       oItem.SubItems.Add(IntToStr(iCount));
       oItem.SubItems.Add(Files[iGroupStart].FileName);
 
+      // Display the file modification time - this will help videos
+      // that aren't multichannel
+      oItem.SubItems.Add(FormatDateTime('yyyy-mm-dd HH:nn:ss',
+        FileModificationDate(IncludeSlash(sFolder) + Files[iGroupStart].FileName)));
+
       If bSelectedInGroup Then
         oSelect := oItem;
     End;
-
   Finally
     lvFiles.EndUpdate;
   End;
 
+  // Hide the first three columns if these aren't multi-channel videos
+  lvFiles.Columns[0].Visible := bHasTimeInFilename;
+  lvFiles.Columns[1].Visible := bHasTimeInFilename;
+  lvFiles.Columns[2].Visible := bHasTimeInFilename;
+
+  // Set the project wide active folder
   FFolder := sFolder;
 
-  Inc(FIgnoreListViewSelectItem);
+  // Try to select a sensible default - either the file that was passed to
+  // ParseFolderOrFileFolder, or the first file in the listview
+  Busy := True;
   Try
+    If Not Assigned(oSelect) And Not Assigned(lvFiles.Selected) And (lvFiles.Items.Count > 0) Then
+      oSelect := lvFiles.Items[0];
+
     If Assigned(oSelect) Then
     Begin
       oSelect.Selected := True;
@@ -397,22 +448,21 @@ Begin
     End
     Else
     Begin
-      // TODO Implement clear
-      //fmeVideoPlayer.Clear;
-      //fmeSyncedVideo.BeginLoadVideos;
-      //fmeSyncedVideo.EndLoadVideos;
+      fmeVideoPlayer.Clear;
+
+      // TODO Implement fmeSyncedVideo.clear
+      //      Not done now as this will require testing all Video modules
+      fmeSyncedVideo.ClearVideoCount;
+      fmeSyncedVideo.ClearUnloadedVideoFrames;
     End;
   Finally
-    Dec(FIgnoreListViewSelectItem);
+    Busy := False;
   End;
 
   Inc(FIgnoreTreeViewChange);
   Try
     If ExtractFileDrive(tvFolders.Root) <> ExtractFileDrive(sDrive) Then
-    Begin
-      tvFolders.Root := sDrive;
-      edtRoot.Text := sDrive;
-    End;
+      OpenFolder(sDrive);
 
     If Not SameFileName(ExcludeSlash(tvFolders.Path), ExcludeSlash(sFolder)) Then
       tvFolders.Path := sFolder;
@@ -472,7 +522,7 @@ Begin
   If FIgnoreTreeViewChange > 0 Then
     Exit;
 
-  ParseFolder(tvFolders.Path);
+  ParseFolderOrFileFolder(tvFolders.Path);
 End;
 
 Procedure TfrmIMVideo.OpenVideo(Const AFiles: TStrings);
@@ -554,7 +604,7 @@ Begin
             dtStart := 0;
 
           fmeSyncedVideo.Load(sFile, sChannel, dtStart);
-          FMRU.Add(sFile);
+          FMRUFiles.Add(sFile);
         End;
       End;
 
@@ -583,7 +633,7 @@ Begin
       Begin
         Inc(FIgnoreListViewSelectItem);
         Try
-          ParseFolder(fmeSyncedVideo.Filename);
+          ParseFolderOrFileFolder(fmeSyncedVideo.Filename);
         Finally
           Dec(FIgnoreListViewSelectItem);
         End;
@@ -595,6 +645,32 @@ Begin
   End;
 End;
 
+Procedure TfrmIMVideo.OpenFolder(AFolder: String);
+Begin
+  If Not DirectoryExists(AFolder) Then
+    Exit;
+
+  If ExtractFileDrive(tvFolders.Root) <> ExtractFileDrive(AFolder) Then
+  Begin
+    Inc(FIgnoreTreeViewChange);
+    Try
+      edtRoot.Text := AFolder;
+      tvFolders.Root := AFolder;
+
+      FMRUFolders.Add(AFolder);
+
+      If tvFolders.Items.Count > 0 Then
+      Begin
+        tvFolders.Selected := tvFolders.Items[0];
+
+        ParseFolderOrFileFolder(AFolder);
+      End;
+    Finally
+      Dec(FIgnoreTreeViewChange);
+    End;
+  End;
+End;
+
 Procedure TfrmIMVideo.mnuExitClick(Sender: TObject);
 Begin
   Close;
@@ -602,8 +678,11 @@ End;
 
 Procedure TfrmIMVideo.mnuFileClick(Sender: TObject);
 Begin
-  FMRU.Populate(mnuOpenRecent, @mnuOpenRecentClick);
-  mnuOpenRecent.Enabled := FMRU.Count > 0;
+  FMRUFiles.Populate(mnuOpenRecent, @mnuOpenRecentClick);
+  mnuOpenRecent.Enabled := FMRUFiles.Count > 0;
+
+  FMRUFolders.Populate(mnuOpenRecentFolder, @mnuOpenRecentFolderClick);
+  mnuOpenRecentFolder.Enabled := FMRUFolders.Count > 0;
 End;
 
 Procedure TfrmIMVideo.mnuOpenClick(Sender: TObject);
@@ -618,15 +697,27 @@ Procedure TfrmIMVideo.mnuOpenRecentClick(Sender: TObject);
 Var
   slFiles: TStringList;
 Begin
-  If (Sender Is TMenuItem) And (TMenuItem(Sender).Tag < FMRU.Count) Then
+  If (Sender Is TMenuItem) And (TMenuItem(Sender).Tag < FMRUFiles.Count) Then
   Begin
     slFiles := TStringList.Create;
     Try
-      slFiles.Add(FMRU.Value(TMenuItem(Sender).Tag));
+      slFiles.Add(FMRUFiles.Value(TMenuItem(Sender).Tag));
       OpenVideo(slFiles);
     Finally
       slFiles.Free;
     End;
+  End;
+End;
+
+Procedure TfrmIMVideo.mnuOpenRecentFolderClick(Sender: TObject);
+Var
+  sDrive: String;
+Begin
+  If (Sender Is TMenuItem) And (TMenuItem(Sender).Tag < FMRUFolders.Count) Then
+  Begin
+    sDrive := FMRUFolders.Value(TMenuItem(Sender).Tag);
+
+    OpenFolder(sDrive);
   End;
 End;
 
@@ -667,24 +758,23 @@ Var
 Begin
   Inherited;
 
-  FMRU.Load(oInifile, 'Files', 'MRU');
+  FMRUFiles.Load(oInifile, 'Files', 'MRU');
+  FMRUFolders.Load(oInifile, 'Folders', 'MRU');
+
   fmeVideoPlayer.LoadSettings(oIniFile);
 
   Inc(FIgnoreTreeViewChange);
   Try
     sRoot := oIniFile.ReadString('Last', 'Root', '-');
     If (sRoot <> '-') And DirectoryExists(sRoot) Then
-    Begin
-      edtRoot.Directory := sRoot;
-      tvFolders.Root := sRoot;
-    End;
+      OpenFolder(sRoot);
   Finally
     Dec(FIgnoreTreeViewChange);
   End;
 
   sFolder := oIniFile.ReadString('Last', 'Folder', '-');
   If (sFolder <> '-') And DirectoryExists(sFolder) Then
-    ParseFolder(sFolder);
+    ParseFolderOrFileFolder(sFolder);
 
   iTemp := oIniFile.ReadInteger('Last', 'Files Height', -1);
   tvFolders.Height := EnsureRange(iTemp, 160, pnlLeft.Height - 160);
@@ -698,7 +788,9 @@ Procedure TfrmIMVideo.SaveLocalSettings(oInifile: TIniFile);
 Begin
   Inherited;
 
-  FMRU.Save(oInifile, 'Files', 'MRU');
+  FMRUFiles.Save(oInifile, 'Files', 'MRU');
+  FMRUFolders.Save(oInifile, 'Folders', 'MRU');
+
   fmeVideoPlayer.SaveSettings(oIniFile);
 
   If DirectoryExists(FFolder) Then

@@ -222,7 +222,7 @@ End;
 
 Procedure TfrmIMVideo.FormClose(Sender: TObject; Var CloseAction: TCloseAction);
 Begin
-  If Assigned(fmeVideoPlayer) Then
+  If assigned(fmeVideoPlayer) Then
     fmeVideoPlayer.Clear;
 
   Inherited;
@@ -244,49 +244,49 @@ Begin
   Result := Abs(A - B) * 24 * 60 * 60;
 End;
 
-Function CompareVideoFileInfo(Const A, B: TVideoFileInfo): Integer;
-Begin
-  If A.HasDateTime And B.HasDateTime Then
-  Begin
-    If A.DateTime < B.DateTime Then Exit(-1);
-    If A.DateTime > B.DateTime Then Exit(1);
-    Result := CompareText(A.FileName, B.FileName);
-  End
-  Else If A.HasDateTime Then
-    Result := -1
-  Else If B.HasDateTime Then
-    Result := 1
-  Else
-    Result := CompareText(A.FileName, B.FileName);
-End;
-
 Procedure SortVideoFiles(Var AFiles: Array Of TVideoFileInfo);
+
+  Function CompareVideoFileInfo(Const A, B: TVideoFileInfo): Integer;
+  Begin
+    If A.HasDateTime And B.HasDateTime Then
+    Begin
+      If A.DateTime < B.DateTime Then Exit(-1);
+      If A.DateTime > B.DateTime Then Exit(1);
+      Result := CompareText(A.FileName, B.FileName);
+    End
+    Else If A.HasDateTime Then
+      Result := -1
+    Else If B.HasDateTime Then
+      Result := 1
+    Else
+      Result := CompareText(A.FileName, B.FileName);
+  End;
 
   Procedure QuickSort(L, R: Integer);
   Var
-    I, J: Integer;
+    i, J: Integer;
     Pivot, Temp: TVideoFileInfo;
   Begin
-    I := L;
+    i := L;
     J := R;
     Pivot := AFiles[(L + R) Div 2];
 
     Repeat
-      While CompareVideoFileInfo(AFiles[I], Pivot) < 0 Do Inc(I);
+      While CompareVideoFileInfo(AFiles[i], Pivot) < 0 Do Inc(i);
       While CompareVideoFileInfo(AFiles[J], Pivot) > 0 Do Dec(J);
 
-      If I <= J Then
+      If i <= J Then
       Begin
-        Temp := AFiles[I];
-        AFiles[I] := AFiles[J];
+        Temp := AFiles[i];
+        AFiles[i] := AFiles[J];
         AFiles[J] := Temp;
-        Inc(I);
+        Inc(i);
         Dec(J);
       End;
-    Until I > J;
+    Until i > J;
 
     If L < J Then QuickSort(L, J);
-    If I < R Then QuickSort(I, R);
+    If i < R Then QuickSort(i, R);
   End;
 
 Begin
@@ -299,7 +299,7 @@ Var
   sFolder, sExt, sSearchMask, sFullName, sDrive: String;
   oSearchRec: TSearchRec;
   oParsedInfo: TInspectionFilenameInfo;
-  Files: Array Of TVideoFileInfo;
+  arrFiles: Array Of TVideoFileInfo;
   i, iGroupStart, iCount: Integer;
   oItem, oSelect: TListItem;
   bSelectedInGroup: Boolean;
@@ -308,19 +308,21 @@ Var
   Procedure AddFile(Const AFullName, AFileName: String);
   Var
     n: Integer;
+    bHasDateTime: Boolean;
   Begin
-    n := Length(Files);
-    SetLength(Files, n + 1);
+    n := Length(arrFiles);
+    SetLength(arrFiles, n + 1);
 
-    Files[n].FullName := AFullName;
-    Files[n].FileName := AFileName;
-    Files[n].HasDateTime :=
-      TryParseInspectionFilename(AFullName, oParsedInfo);
+    bHasDateTime := TryParseInspectionFilename(AFullName, oParsedInfo);
 
-    If Files[n].HasDateTime Then
-      Files[n].DateTime := oParsedInfo.DateTime
+    arrFiles[n].FullName := AFullName;
+    arrFiles[n].FileName := AFileName;
+    arrFiles[n].HasDateTime := bHasDateTime;
+
+    If bHasDateTime Then
+      arrFiles[n].DateTime := oParsedInfo.DateTime
     Else
-      Files[n].DateTime := 0;
+      arrFiles[n].DateTime := 0;
   End;
 
 Begin
@@ -337,14 +339,13 @@ Begin
     Exit;
 
   sDrive := IncludeSlash(ExtractFileDrive(sFolder));
-  sSearchMask := IncludeTrailingPathDelimiter(sFolder) + '*.*';
+  sSearchMask := IncludeSlash(sFolder) + '*.*';
 
   If FindFirst(sSearchMask, faAnyFile And Not faDirectory, oSearchRec) = 0 Then
   Begin
     Try
       Repeat
-        sFullName :=
-          IncludeTrailingPathDelimiter(sFolder) + oSearchRec.Name;
+        sFullName := IncludeSlash(sFolder) + oSearchRec.Name;
         sExt := ExtractFileExt(sFullName);
 
         If IsVideo(sExt) Then
@@ -356,37 +357,37 @@ Begin
     End;
   End;
 
-  SortVideoFiles(Files);
+  SortVideoFiles(arrFiles);
 
   lvFiles.BeginUpdate;
   Try
     lvFiles.Items.Clear;
 
-    i := 0;
+    i := Low(arrFiles);
 
     bHasTimeInFilename := False;
 
-    // First, let's work out if any of these files are multichannel
+    // First, let's work out if any of these Files are multichannel
     // baed on us having decoded times from the filenames and these
     // times being within RELATED_VIDEO_WINDOW_SEC seconds of each other
-    While i <= High(Files) Do
+    While i <= High(arrFiles) Do
     Begin
       iGroupStart := i;
       iCount := 1;
 
-      bSelectedInGroup := Not bFolder And SameFileName(Files[i].FullName, AFile);
+      bSelectedInGroup := Not bFolder And SameFileName(arrFiles[i].FullName, AFile);
 
-      If Files[i].HasDateTime Then
+      If arrFiles[i].HasDateTime Then
       Begin
         Inc(i);
 
-        While (i <= High(Files)) And Files[i].HasDateTime And
-          (SecondsApart(Files[i].DateTime, Files[iGroupStart].DateTime) <=
+        While (i <= High(arrFiles)) And arrFiles[i].HasDateTime And
+          (SecondsApart(arrFiles[i].DateTime, arrFiles[iGroupStart].DateTime) <=
             RELATED_VIDEO_WINDOW_SEC) Do
         Begin
           Inc(iCount);
 
-          If Not bFolder And SameFileName(Files[i].FullName, AFile) Then
+          If Not bFolder And SameFileName(arrFiles[i].FullName, AFile) Then
             bSelectedInGroup := True;
 
           Inc(i);
@@ -397,12 +398,12 @@ Begin
 
       oItem := lvFiles.Items.Add;
 
-      If Files[iGroupStart].HasDateTime Then
+      If arrFiles[iGroupStart].HasDateTime Then
       Begin
         bHasTimeInFilename := True;
 
-        oItem.Caption := FormatDateTime('yyyy-mm-dd', Files[iGroupStart].DateTime);
-        oItem.SubItems.Add(FormatDateTime('HH:nn:ss', Files[iGroupStart].DateTime));
+        oItem.Caption := FormatDateTime('yyyy-mm-dd', arrFiles[iGroupStart].DateTime);
+        oItem.SubItems.Add(FormatDateTime('HH:nn:ss', arrFiles[iGroupStart].DateTime));
       End
       Else
       Begin
@@ -411,12 +412,12 @@ Begin
       End;
 
       oItem.SubItems.Add(IntToStr(iCount));
-      oItem.SubItems.Add(Files[iGroupStart].FileName);
+      oItem.SubItems.Add(arrFiles[iGroupStart].FileName);
 
       // Display the file modification time - this will help videos
       // that aren't multichannel
       oItem.SubItems.Add(FormatDateTime('yyyy-mm-dd HH:nn:ss',
-        FileModificationDate(IncludeSlash(sFolder) + Files[iGroupStart].FileName)));
+        FileModificationDate(IncludeSlash(sFolder) + arrFiles[iGroupStart].FileName)));
 
       If bSelectedInGroup Then
         oSelect := oItem;
@@ -437,10 +438,11 @@ Begin
   // ParseFolderOrFileFolder, or the first file in the listview
   Busy := True;
   Try
-    If Not Assigned(oSelect) And Not Assigned(lvFiles.Selected) And (lvFiles.Items.Count > 0) Then
+    If Not assigned(oSelect) And Not assigned(lvFiles.Selected) And
+      (lvFiles.Items.Count > 0) Then
       oSelect := lvFiles.Items[0];
 
-    If Assigned(oSelect) Then
+    If assigned(oSelect) Then
     Begin
       oSelect.Selected := True;
       oSelect.Focused := True;
@@ -450,8 +452,8 @@ Begin
     Begin
       fmeVideoPlayer.Clear;
 
-      // TODO Implement fmeSyncedVideo.clear
-      //      Not done now as this will require testing all Video modules
+      // TODO: Implement fmeSyncedVideo.clear
+      //       Not done now as this will require testing all Video modules
       fmeSyncedVideo.ClearVideoCount;
       fmeSyncedVideo.ClearUnloadedVideoFrames;
     End;
@@ -494,7 +496,8 @@ Begin
   End;
 End;
 
-Procedure TfrmIMVideo.lvFilesSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+Procedure TfrmIMVideo.lvFilesSelectItem(Sender: TObject; Item: TListItem;
+  Selected: Boolean);
 Var
   arrFiles: TStringArray;
   sFile: String;
@@ -505,7 +508,7 @@ Begin
   If (Item.Selected) And (lvFiles.Selected = Item) Then
   Begin
     arrFiles := [];
-    sFile := IncludeSlash(FFolder) + Item.Subitems[2];
+    sFile := IncludeSlash(FFolder) + Item.SubItems[2];
     AddStringToArray(arrFiles, sFile);
 
     FInternalLoad := True;
@@ -540,7 +543,7 @@ Var
   oInspectionFilenameInfo: TInspectionFilenameInfo;
   dtStart, dtEnd: TDateTime;
 Begin
-  If Not Assigned(AFiles) Then
+  If Not assigned(AFiles) Then
     Exit;
 
   If Length(AFiles) = 0 Then
@@ -575,7 +578,7 @@ Begin
   Busy := True;
   BeginFormUpdate;
   Try
-    If Not Assigned(fmeSyncedVideo) Then
+    If Not assigned(fmeSyncedVideo) Then
       If assigned(fmeVideoPlayer.PlaybackFrame) Then
       Begin
         If fmeVideoPlayer.PlaybackFrame Is TFrameSyncedVideo Then
@@ -625,7 +628,7 @@ Begin
 
       FFolder := ExtractFileDir(sFile);
 
-      Caption := Format('%s: %s', [Application.Title, fmeSyncedVideo.Filename]);
+      Caption := Format('%s: %s', [Application.Title, fmeSyncedVideo.FileName]);
 
       tmrUpdate.Enabled := True;
 
@@ -633,7 +636,7 @@ Begin
       Begin
         Inc(FIgnoreListViewSelectItem);
         Try
-          ParseFolderOrFileFolder(fmeSyncedVideo.Filename);
+          ParseFolderOrFileFolder(fmeSyncedVideo.FileName);
         Finally
           Dec(FIgnoreListViewSelectItem);
         End;
@@ -761,26 +764,26 @@ Begin
   FMRUFiles.Load(oInifile, 'Files', 'MRU');
   FMRUFolders.Load(oInifile, 'Folders', 'MRU');
 
-  fmeVideoPlayer.LoadSettings(oIniFile);
+  fmeVideoPlayer.LoadSettings(oInifile);
 
   Inc(FIgnoreTreeViewChange);
   Try
-    sRoot := oIniFile.ReadString('Last', 'Root', '-');
+    sRoot := oInifile.ReadString('Last', 'Root', '-');
     If (sRoot <> '-') And DirectoryExists(sRoot) Then
       OpenFolder(sRoot);
   Finally
     Dec(FIgnoreTreeViewChange);
   End;
 
-  sFolder := oIniFile.ReadString('Last', 'Folder', '-');
+  sFolder := oInifile.ReadString('Last', 'Folder', '-');
   If (sFolder <> '-') And DirectoryExists(sFolder) Then
     ParseFolderOrFileFolder(sFolder);
 
-  iTemp := oIniFile.ReadInteger('Last', 'Files Height', -1);
+  iTemp := oInifile.ReadInteger('Last', 'Files Height', -1);
   tvFolders.Height := EnsureRange(iTemp, 160, pnlLeft.Height - 160);
   tvFolders.Top := pnlDrive.Height;
 
-  iTemp := oIniFile.ReadInteger('Last', 'Files Width', -1);
+  iTemp := oInifile.ReadInteger('Last', 'Files Width', -1);
   pnlLeft.Width := EnsureRange(iTemp, 250, frmIMVideo.Width Div 2);
 End;
 
@@ -791,16 +794,16 @@ Begin
   FMRUFiles.Save(oInifile, 'Files', 'MRU');
   FMRUFolders.Save(oInifile, 'Folders', 'MRU');
 
-  fmeVideoPlayer.SaveSettings(oIniFile);
+  fmeVideoPlayer.SaveSettings(oInifile);
 
   If DirectoryExists(FFolder) Then
-    oIniFile.WriteString('Last', 'Folder', FFolder);
+    oInifile.WriteString('Last', 'Folder', FFolder);
 
   If DirectoryExists(edtRoot.Directory) Then
-    oIniFile.WriteString('Last', 'Root', edtRoot.Directory);
+    oInifile.WriteString('Last', 'Root', edtRoot.Directory);
 
-  oIniFile.WriteInteger('Last', 'Files Height', lvFiles.Height);
-  oIniFile.WriteInteger('Last', 'Files Width', pnlLeft.Width);
+  oInifile.WriteInteger('Last', 'Files Height', lvFiles.Height);
+  oInifile.WriteInteger('Last', 'Files Width', pnlLeft.Width);
 End;
 
 End.

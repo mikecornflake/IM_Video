@@ -45,10 +45,10 @@ This project is currently developed and tested using:
 
 The following packages are required from InspectorMike Common Repository:
 
-- IM_units.lpk
-- IM_forms.lpk
-- IM_forms.media.lpk
-- IM_forms.media.mpv.lpk
+- IM.units.lpk
+- IM.forms.lpk
+- IM.forms.media.lpk
+- IM.forms.media.mpv.lpk
 
 Repository:
 

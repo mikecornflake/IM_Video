@@ -121,10 +121,10 @@
     </RunParams>
     <RequiredPackages>
       <Item>
-        <PackageName Value="IM_forms.media.mpv"/>
+        <PackageName Value="IM.forms.media.mpv"/>
       </Item>
       <Item>
-        <PackageName Value="IM_forms"/>
+        <PackageName Value="IM.forms"/>
       </Item>
       <Item>
         <PackageName Value="LCL"/>

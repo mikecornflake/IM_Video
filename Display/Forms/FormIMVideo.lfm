@@ -99,6 +99,9 @@ inherited frmIMVideo: TfrmIMVideo
           AutoSize = True
           Caption = 'Modified Date'
           Width = 90
+        end      
+        item
+          Caption = 'Source'
         end>
       HideSelection = False
       ReadOnly = True

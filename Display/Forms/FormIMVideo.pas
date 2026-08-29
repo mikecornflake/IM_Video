@@ -237,6 +237,7 @@ Type
     FileName: String;
     HasDateTime: Boolean;
     DateTime: TDateTime;
+    FormatName: String;
   End;
 
 Function SecondsApart(Const A, B: TDateTime): Double;
@@ -320,9 +321,16 @@ Var
     arrFiles[n].HasDateTime := bHasDateTime;
 
     If bHasDateTime Then
-      arrFiles[n].DateTime := oParsedInfo.DateTime
+    Begin
+      arrFiles[n].DateTime := oParsedInfo.DateTime;
+      arrFiles[n].FormatName := oParsedInfo.FormatName;
+    End
     Else
+    Begin
       arrFiles[n].DateTime := 0;
+      arrFiles[n].FormatName := '';
+    End;
+
   End;
 
 Begin
@@ -418,6 +426,9 @@ Begin
       // that aren't multichannel
       oItem.SubItems.Add(FormatDateTime('yyyy-mm-dd HH:nn:ss',
         FileModificationDate(IncludeSlash(sFolder) + arrFiles[iGroupStart].FileName)));
+
+      // What software do we think created the video?
+      oItem.SubItems.Add(arrFiles[iGroupStart].FormatName);
 
       If bSelectedInGroup Then
         oSelect := oItem;

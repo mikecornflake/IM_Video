@@ -1,4 +1,4 @@
-# Inspector Mike Video Player
+# IM_Video: Inspector Mike Video Player
 
 **Inspector Mike Video Player** is a single and multi-channel video
 player designed for offshore inspection and ROV operations.

@@ -664,8 +664,8 @@ Begin
   If Not DirectoryExists(AFolder) Then
     Exit;
 
-  If ExtractFileDrive(tvFolders.Root) <> ExtractFileDrive(AFolder) Then
-  Begin
+  //If ExtractFileDrive(tvFolders.Root) <> ExtractFileDrive(AFolder) Then
+  //Begin
     Inc(FIgnoreTreeViewChange);
     Try
       edtRoot.Text := AFolder;
@@ -682,7 +682,7 @@ Begin
     Finally
       Dec(FIgnoreTreeViewChange);
     End;
-  End;
+  //End;
 End;
 
 Procedure TfrmIMVideo.mnuExitClick(Sender: TObject);

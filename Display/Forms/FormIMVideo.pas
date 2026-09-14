@@ -20,10 +20,9 @@ Type
     btnRefresh: TBitBtn;
     edtRoot: TDirectoryEdit;
     lvFiles: TListView;
+    mnuVideoSettings: TMenuItem;
     mnuOpenRecentFolder: TMenuItem;
     mnuFolderOpenFolders: TMenuItem;
-    mnuToggleVideo: TMenuItem;
-    mnuView: TMenuItem;
     pnlDrive: TPanel;
     pnlLeft: TPanel;
     pmFolders: TPopupMenu;
@@ -47,12 +46,12 @@ Type
     Procedure FormDestroy(Sender: TObject);
     Procedure FormDropFiles(Sender: TObject; Const FileNames: Array Of String);
     Procedure lvFilesSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+    Procedure mnuVideoSettingsClick(Sender: TObject);
     Procedure mnuExitClick(Sender: TObject);
     Procedure mnuFileClick(Sender: TObject);
     Procedure mnuOpenClick(Sender: TObject);
     Procedure mnuOpenRecentClick(Sender: TObject);
     Procedure mnuOpenRecentFolderClick(Sender: TObject);
-    Procedure mnuToggleVideoClick(Sender: TObject);
     Procedure tmrUpdateTimer(Sender: TObject);
     Procedure tvFoldersSelectionChanged(Sender: TObject);
   Private
@@ -81,8 +80,9 @@ Var
 Implementation
 
 Uses
-  FileSupport, VideoEngineFactory, ControlGridLayout, StringSupport,
+  FileSupport, VideoEngineFactory, StringSupport,
   InspectionSupport, DateUtils, Math, OSSupport,
+  DialogFrameHost, FrameSettingsSyncedVideo,
 
   // Include all required video playback engines below this point
   FrameVideoLibmpv;
@@ -105,16 +105,14 @@ Begin
   // Change this line to swap playback engines.
   fmeVideoPlayer.VideoEngineClass := TFrameSyncedVideo;
 
-  fmeSyncedVideo := nil;
+  // Obtain a refernence to the instantiated Video Engine
+  fmeSyncedVideo := TFrameSyncedVideo(fmeVideoPlayer.PlaybackFrame);
 
-  If assigned(fmeVideoPlayer.PlaybackFrame) Then
-  Begin
-    If fmeVideoPlayer.PlaybackFrame Is TFrameSyncedVideo Then
-    Begin
-      fmeSyncedVideo := TFrameSyncedVideo(fmeVideoPlayer.PlaybackFrame);
-      fmeSyncedVideo.VideoEngineClass := TVideoEngineFactory.DefaultClass;
-    End;
-  End;
+  // And use the registered playback engine (mpv, vlc, mplayer etc)
+  fmeSyncedVideo.VideoEngineClass := TVideoEngineFactory.DefaultClass;
+
+  // For the settings file
+  fmeSyncedVideo.Name := 'fmeSyncedVideo';
 
   // Disable require --configure
   FAlwaysSaveSettings := True;
@@ -507,8 +505,7 @@ Begin
   End;
 End;
 
-Procedure TfrmIMVideo.lvFilesSelectItem(Sender: TObject; Item: TListItem;
-  Selected: Boolean);
+Procedure TfrmIMVideo.lvFilesSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
 Var
   arrFiles: TStringArray;
   sFile: String;
@@ -528,6 +525,26 @@ Begin
     Finally
       FInternalLoad := False;
     End;
+  End;
+End;
+
+Procedure TfrmIMVideo.mnuVideoSettingsClick(Sender: TObject);
+Var
+  oDlg: TDialogFrameHost;
+  oFrame: TFrameSettingsSyncedVideo;
+Begin
+  oDlg := TDialogFrameHost.Create(Self);
+  oFrame := TFrameSettingsSyncedVideo.Create(oDlg);
+  Try
+    oDlg.Caption := Application.Title;
+    oDlg.RegisterFrame(oFrame, 'Multi-channel Video');
+    fmeSyncedVideo.PopulateSettingsFrame(oFrame);
+
+    If oDlg.ShowModal = mrOk Then
+      fmeSyncedVideo.ApplySettingsFrame(oFrame);
+  Finally
+    oFrame.Free;
+    oDlg.Free;
   End;
 End;
 
@@ -589,16 +606,6 @@ Begin
   Busy := True;
   BeginFormUpdate;
   Try
-    If Not assigned(fmeSyncedVideo) Then
-      If assigned(fmeVideoPlayer.PlaybackFrame) Then
-      Begin
-        If fmeVideoPlayer.PlaybackFrame Is TFrameSyncedVideo Then
-        Begin
-          fmeSyncedVideo := TFrameSyncedVideo(fmeVideoPlayer.PlaybackFrame);
-          fmeSyncedVideo.VideoEngineClass := TVideoEngineFactory.DefaultClass;
-        End;
-      End;
-
     fmeSyncedVideo.BeginLoadVideos;
     Try
       For sFile In arrFiles Do
@@ -628,11 +635,6 @@ Begin
 
     If fmeSyncedVideo.VideoFileCount > 0 Then
     Begin
-      If fmeSyncedVideo.VideoFileCount > 2 Then
-        fmeSyncedVideo.Layout(2, 2, clsLeftToRightThenDown)
-      Else
-        fmeSyncedVideo.Layout(1, fmeSyncedVideo.VideoFileCount, clsLeftToRightThenDown);
-
       // Play the video
       fmeSyncedVideo.Play;
       fmeVideoPlayer.RefreshUI;
@@ -666,22 +668,22 @@ Begin
 
   //If ExtractFileDrive(tvFolders.Root) <> ExtractFileDrive(AFolder) Then
   //Begin
-    Inc(FIgnoreTreeViewChange);
-    Try
-      edtRoot.Text := AFolder;
-      tvFolders.Root := AFolder;
+  Inc(FIgnoreTreeViewChange);
+  Try
+    edtRoot.Text := AFolder;
+    tvFolders.Root := AFolder;
 
-      FMRUFolders.Add(AFolder);
+    FMRUFolders.Add(AFolder);
 
-      If tvFolders.Items.Count > 0 Then
-      Begin
-        tvFolders.Selected := tvFolders.Items[0];
+    If tvFolders.Items.Count > 0 Then
+    Begin
+      tvFolders.Selected := tvFolders.Items[0];
 
-        ParseFolderOrFileFolder(AFolder);
-      End;
-    Finally
-      Dec(FIgnoreTreeViewChange);
+      ParseFolderOrFileFolder(AFolder);
     End;
+  Finally
+    Dec(FIgnoreTreeViewChange);
+  End;
   //End;
 End;
 
@@ -732,24 +734,6 @@ Begin
     sDrive := FMRUFolders.Value(TMenuItem(Sender).Tag);
 
     OpenFolder(sDrive);
-  End;
-End;
-
-Procedure TfrmIMVideo.mnuToggleVideoClick(Sender: TObject);
-Begin
-  If (fmeSyncedVideo.VideoFileCount Mod 2) = 0 Then
-  Begin
-    If (Width > Height) Then
-      fmeSyncedVideo.Layout(1, fmeSyncedVideo.VideoFileCount)
-    Else
-      fmeSyncedVideo.Layout(fmeSyncedVideo.VideoFileCount, 1);
-  End
-  Else If fmeSyncedVideo.VideoFileCount <> 1 Then
-  Begin
-    If (Width > Height) Then
-      fmeSyncedVideo.Layout(2, 2, clsLeftToRightThenDown)
-    Else
-      fmeSyncedVideo.Layout(2, 2, clsTopToBottomThenRight);
   End;
 End;
 

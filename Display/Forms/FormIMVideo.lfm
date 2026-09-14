@@ -358,18 +358,13 @@ inherited frmIMVideo: TfrmIMVideo
         OnClick = mnuExitClick
       end
     end
-    object mnuView: TMenuItem[1]
-      Caption = 'View'
-      object mnuToggleVideo: TMenuItem
-        Caption = 'Toggle video'
-        ShortCut = 116
-        OnClick = mnuToggleVideoClick
+    inherited mnuOptions: TMenuItem[1]
+      object mnuVideoSettings: TMenuItem[1]
+        Caption = 'Video settings...'
+        OnClick = mnuVideoSettingsClick
       end
     end
-    inherited mnuOptions: TMenuItem[2]
-      Visible = False
-    end
-    inherited mnuHelp: TMenuItem[3]
+    inherited mnuHelp: TMenuItem[2]
     end
   end
   object dlgOpen: TOpenDialog[7]

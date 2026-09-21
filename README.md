@@ -32,6 +32,28 @@ This code and executable are released under GPL-3.0.
 You are free to use, distribute and modify this software, 
 but please keep the acknowledgements intact.
 
+## Multichannel Detection
+
+IM_Video identifies multichannel video sets from their filenames. Known 
+filename formats are decoded to determine the recording start time and, 
+where available, the channel name. Files with start times within 10 
+seconds of each other are assumed to belong to the same multichannel 
+set.
+
+The following filename formats are recognised:
+
+| Format | Filename timestamp | Channel |
+|---|---|---|
+| **OptionsDVR / VisualWorks** | `YYYYMMDDhhmmsszzz` at the start of the filename. Milliseconds (`zzz`) are ignored. | Text following `@` |
+| **Nexus DVR** | `YYYY-MM-DD hhmmss` at the start of the filename | Parsed from the filename |
+| **Coabis** | `YY-MM-DD_hh-mm-ss` | Not determined |
+| **Fugro FDVR** | `YYYYMMDDhhmmss` in an underscore-separated filename field | Following underscore-separated field |
+| **Generic** | `YYYYMMDDhhmmss` anywhere in the filename | Not determined |
+
+The generic format allows video from other recording systems to be recognised 
+provided the filename contains a valid 14-digit recording start time.
+
+
 ## Build information
 
 This project is currently developed and tested using:

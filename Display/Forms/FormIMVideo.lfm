@@ -359,7 +359,7 @@ inherited frmIMVideo: TfrmIMVideo
       end
     end
     inherited mnuOptions: TMenuItem[1]
-      object mnuVideoSettings: TMenuItem[1]
+      object mnuVideoSettings: TMenuItem[0]
         Caption = 'Video settings...'
         OnClick = mnuVideoSettingsClick
       end

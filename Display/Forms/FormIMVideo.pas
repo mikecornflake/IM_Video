@@ -760,6 +760,7 @@ Begin
   FMRUFolders.Load(oInifile, 'Folders', 'MRU');
 
   fmeVideoPlayer.LoadSettings(oInifile);
+  fmeSyncedVideo.LoadSettings(oInifile);
 
   Inc(FIgnoreTreeViewChange);
   Try
@@ -789,6 +790,7 @@ Begin
   FMRUFiles.Save(oInifile, 'Files', 'MRU');
   FMRUFolders.Save(oInifile, 'Folders', 'MRU');
 
+  fmeSyncedVideo.SaveSettings(oInifile);
   fmeVideoPlayer.SaveSettings(oInifile);
 
   If DirectoryExists(FFolder) Then

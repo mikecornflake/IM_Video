@@ -8,7 +8,7 @@ Interface
 Uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
   Buttons, Menus, ActnList, ComCtrls, ShellCtrls, EditBtn,
-  FrameVideoPlayer, FrameSyncedVideo, FormMain, IniFiles, MRUs;
+  FrameVideoPlayer, FrameSyncedVideo, FormMain, IniFiles, MRUs, AudioWaveform, WaveformCache;
 
 Type
 
@@ -57,6 +57,10 @@ Type
   Private
     fmeVideoPlayer: TFrameVideoPlayer;
     fmeSyncedVideo: TFrameSyncedVideo;
+
+    FManager: TWaveformManager;
+    FDecorator: TAudioWaveformRenderer;
+
     FMRUFiles, FMRUFolders: TMRU;
     FLoaded: Boolean;
     FInternalLoad: Boolean;
@@ -69,6 +73,9 @@ Type
     Procedure OpenFolder(AFolder: String);
 
     Procedure ParseFolderOrFileFolder(AFile: String);
+    Procedure DoOnWaveformReady(Sender: TObject; AVideofilename: String;
+      AWaveformBuckets: TWaveformBuckets);
+    Procedure DoVideoLoaded(Sender: TObject);
   Public
     Procedure LoadLocalSettings(oInifile: TIniFile); Override;
     Procedure SaveLocalSettings(oInifile: TIniFile); Override;
@@ -92,6 +99,8 @@ Uses
   { TfrmIMVideo }
 
 Procedure TfrmIMVideo.FormCreate(Sender: TObject);
+Var
+  sTempFolder: String;
 Begin
   Inherited;
 
@@ -114,6 +123,8 @@ Begin
   // For the settings file
   fmeSyncedVideo.Name := 'fmeSyncedVideo';
 
+  fmeSyncedVideo.OnVideoLoaded := @DoVideoLoaded;
+
   // Disable require --configure
   FAlwaysSaveSettings := True;
 
@@ -124,6 +135,12 @@ Begin
   FMRUFolders := TMRU.Create;
   FMRUFolders.Max := 10;
   FMRUFolders.Kind := mruFolders;
+
+  sTempFolder := IncludeSlash(GetAppConfigDir(False));
+  ForceDirectories(sTempFolder);
+
+  FManager := TWaveformManager.Create(sTempFolder);
+  FManager.OnWaveformReady := @DoOnWaveformReady;
 
   FLoaded := False;
   FInternalLoad := False;
@@ -141,6 +158,8 @@ End;
 
 Procedure TfrmIMVideo.FormDestroy(Sender: TObject);
 Begin
+  FreeAndNil(FManager);
+
   FreeAndNil(FMRUFiles);
   FreeAndNil(FMRUFolders);
 
@@ -482,6 +501,26 @@ Begin
   End;
 End;
 
+Procedure TfrmIMVideo.DoOnWaveformReady(Sender: TObject; AVideofilename: String;
+  AWaveformBuckets: TWaveformBuckets);
+Begin
+  If Not assigned(FDecorator) Then
+  Begin
+    FDecorator := TAudioWaveformRenderer.Create;
+    FDecorator.Normalise := True;
+    FDecorator.PeakModifier := 0.8;
+    FDecorator.Color := clMaroon;
+  End;
+
+  FDecorator.WaveBuckets := AWaveformBuckets;
+  fmeVideoPlayer.Decorator := FDecorator;
+End;
+
+Procedure TfrmIMVideo.DoVideoLoaded(Sender: TObject);
+Begin
+  FManager.RequestWaveform(fmeSyncedVideo.FileName, ClientWidth);
+End;
+
 Procedure TfrmIMVideo.FormDropFiles(Sender: TObject; Const FileNames: Array Of String);
 Var
   sExt, sFile: String;
@@ -606,6 +645,8 @@ Begin
   Busy := True;
   BeginFormUpdate;
   Try
+    fmeVideoPlayer.Decorator := nil;
+
     fmeSyncedVideo.BeginLoadVideos;
     Try
       For sFile In arrFiles Do

@@ -141,6 +141,7 @@ Begin
 
   FManager := TWaveformManager.Create(sTempFolder);
   FManager.OnWaveformReady := @DoOnWaveformReady;
+  FDecorator := nil;
 
   FLoaded := False;
   FInternalLoad := False;
@@ -158,6 +159,7 @@ End;
 
 Procedure TfrmIMVideo.FormDestroy(Sender: TObject);
 Begin
+  FreeAndNil(FDecorator);
   FreeAndNil(FManager);
 
   FreeAndNil(FMRUFiles);
@@ -509,7 +511,7 @@ Begin
     FDecorator := TAudioWaveformRenderer.Create;
     FDecorator.Normalise := True;
     FDecorator.PeakModifier := 0.8;
-    FDecorator.Color := clMaroon;
+    FDecorator.Color := clBlue;
   End;
 
   FDecorator.WaveBuckets := AWaveformBuckets;
